@@ -1,0 +1,260 @@
+---
+title: "FINAL PROJECT  BA"
+date: "2023-12-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{R }
+library(tidyr)
+library(ggplot2)
+library(ggcorrplot)
+library(readxl)
+library(rpart)
+library(rattle)
+library(openxlsx)
+library(pROC)
+```
+
+```{R } 
+# Set plot options
+options(repr.plot.width = 10, repr.plot.height = 9)
+
+
+
+# Read the dataset
+housing_data <- read.csv("C:\\Users\\vinay\\Downloads\\House_Prices.csv")
+head(housing_data)
+
+# Display dataset information
+print(paste("Number of records: ", nrow(housing_data)))
+print(paste("Number of features: ", ncol(housing_data)))
+
+summary(housing_data)
+colnames(housing_data) # column names
+
+# Select main variables of interest
+dataframe <- housing_data[, c("SalePrice", "LotArea", "OverallQual", "YearBuilt", "YearRemodAdd", "BsmtFinSF1", "FullBath", "HalfBath", "BedroomAbvGr", "TotRmsAbvGrd", "Fireplaces", "GarageArea", "YrSold")]
+head(dataframe)
+
+# Check for missing values
+sum(is.na(dataframe))
+
+# Create a variable for the age of the house
+dataframe$years_old <- as.integer(format(Sys.Date(), "%Y")) - dataframe$YearBuilt
+
+# Drop unnecessary variables
+drops <- c("YearBuilt")
+dataframe <- dataframe[, !(names(dataframe) %in% drops)]
+
+# Calculate and plot the correlation matrix
+correlation_matrix <- round(cor(dataframe), 1)
+```
+```{R }
+# Plot the correlation matrix
+ggcorrplot(correlation_matrix,
+  type = "lower",
+  lab = TRUE,
+  lab_size = 5,
+  colors = c("#ab2912", "#1dfa54", "#469ed8"),
+  title = "Correlogram of Housing dataset",
+  ggtheme = theme_bw  
+)
+```
+
+
+```{R } 
+# Plot SalePrice vs. LotArea
+ggplot(dataframe, aes(y = SalePrice, x = LotArea)) +
+  geom_point() +
+  xlim(0, 9000) +
+  ylim(0, 5000000) +
+  geom_smooth(formula = y ~ x, method = "lm")
+```
+
+```{R }
+# Plot the distribution of SalePrice
+ggplot(dataframe, aes(x = SalePrice)) +
+  geom_histogram(binwidth = 50000, fill = "#d52fa3", color = "#1564e3", alpha = 0.7) +
+  labs(
+    title = "Distribution of SalePrice",
+    x = "SalePrice",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+```
+
+```{R }
+# Scatter plot of OverallQual vs. SalePrice
+ggplot(dataframe, aes(x = OverallQual, y = SalePrice)) +
+  geom_point(color = "#15de34", alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "#bd13ac") +
+  labs(
+    title = "Scatter Plot of OverallQual and SalePrice",
+    x = "Overall Quality",
+    y = "SalePrice"
+  ) +
+  theme_minimal()
+```
+
+```{R } 
+# Fit a linear model
+model_of_linear <- lm(
+  SalePrice ~ BedroomAbvGr + LotArea + OverallQual + YearRemodAdd +
+    BsmtFinSF1 + FullBath + HalfBath + years_old + TotRmsAbvGrd + Fireplaces +
+    GarageArea + YrSold,
+  data = dataframe
+)
+
+# Display summary of the linear model
+summary(model_of_linear)
+```
+
+```{R } 
+# Read the test dataset
+data_testing <- read_excel("C:\\Users\\vinay\\Downloads\\BA-Predict.xlsx")
+dataframe_test <- data_testing[, c("SalePrice", "LotArea", "OverallQual", "YearBuilt", "YearRemodAdd", "BsmtFinSF1", "FullBath", "HalfBath", "BedroomAbvGr", "TotRmsAbvGrd", "Fireplaces", "GarageArea", "YrSold")]
+
+# Create the age variable for the test dataset
+dataframe_test$years_old <- as.integer(format(Sys.Date(), "%Y")) - dataframe_test$YearBuilt
+
+# Drop unnecessary variables
+drops <- c("YearBuilt")
+dataframe_test <- dataframe_test[, !(names(dataframe_test) %in% drops)]
+
+# Combine variables for plotting
+dataset_of_the_hist <- dataframe %>%
+  gather(key = "Variable", value = "Value") 
+
+# Plot histograms for each variable
+ggplot(dataset_of_the_hist, aes(x = Value)) +
+  geom_histogram(fill = "#1793df", bins = 30) +
+  facet_wrap(~Variable, scales = "free") +
+  theme_classic() +
+  theme(aspect.ratio = 0.5, axis.title = element_blank(), panel.grid = element_blank())
+```
+
+```{R } 
+# Fit a decision tree model
+tree_model <- rpart(
+  SalePrice ~ BedroomAbvGr + LotArea + OverallQual + years_old + YearRemodAdd +
+    BsmtFinSF1 + FullBath + HalfBath + TotRmsAbvGrd + Fireplaces +
+    GarageArea + YrSold,
+  data = dataframe
+)
+
+# Make predictions using the decision tree model
+predicting_tree <- predict(tree_model, newdata = dataframe_test)
+
+# Evaluate decision tree model metrics
+tree_metrics <- list(
+  RMSE = sqrt(mean((predicting_tree - dataframe_test$SalePrice)^2)),
+  MAE = mean(abs(predicting_tree - dataframe_test$SalePrice))
+)
+
+# Display decision tree metrics
+cat("Decision Tree Metrics:\n")
+print(tree_metrics)
+
+# Plot the decision tree
+fancyRpartPlot(tree_model)
+
+# Create a binary variable for OverallQual
+dataframe$OverallQualBinary <- ifelse(dataframe$OverallQual >= 7, 1, 0)
+```
+
+```{R } 
+# Fit a logistic regression model
+model_logistic <- glm(
+  OverallQualBinary ~ BedroomAbvGr + LotArea + years_old + YearRemodAdd +
+    BsmtFinSF1 + FullBath + HalfBath + TotRmsAbvGrd + Fireplaces +
+    GarageArea + YrSold,
+  data = dataframe, family = "binomial"
+)
+
+# Display summary of the logistic regression model
+summary(model_logistic)
+```
+
+```{R } 
+# Fit a logistic regression model
+logit_model <- glm(
+  OverallQualBinary ~ BedroomAbvGr + LotArea + years_old + YearRemodAdd +
+    BsmtFinSF1 + FullBath + HalfBath + TotRmsAbvGrd + Fireplaces +
+    GarageArea + YrSold,
+  data = dataframe, family = "binomial"
+)
+
+# Display summary of the logistic regression model
+summary(logit_model)
+
+# Make predictions using the logistic regression model
+dataframe_test$OverallQualBinary <- predict(logit_model, newdata = dataframe_test, type = "response") >= 0.5
+```
+
+
+```{R } 
+# Make predictions using the logistic regression model
+predection_of_logist_probs <- predict(logit_model, newdata = dataframe_test, type = "response")
+predection_logist <- ifelse(predection_of_logist_probs >= 0.5, 1, 0)
+
+# Create confusion matrix for logistic regression
+logistic_matrix <- table(Actual = dataframe_test$OverallQualBinary, Predicted = as.factor(predection_logist))
+Accuracy_of_logistic <- sum(diag(logistic_matrix)) / sum(logistic_matrix)
+
+# Display logistic regression metrics
+cat("Logistic Regression Metrics:\n")
+print(logistic_matrix)
+cat("Accuracy: ", Accuracy_of_logistic, "\n")
+```
+
+```{R } 
+# Fit a decision tree model
+tree_model <- rpart(
+  SalePrice ~ BedroomAbvGr + LotArea + OverallQual + years_old + YearRemodAdd +
+    BsmtFinSF1 + FullBath + HalfBath + TotRmsAbvGrd + Fireplaces +
+    GarageArea + YrSold,
+  data = dataframe
+)
+```
+
+```{R } 
+# Create a binary variable for OverallQual
+dataframe$OverallQualBinary <- ifelse(dataframe$OverallQual >= 7, 1, 0)
+```
+
+```{R }  
+# Boxplot for SalePrice by OverallQualBinary
+ggplot(dataframe, aes(x = factor(OverallQualBinary), y = SalePrice)) +
+  geom_boxplot(fill = "#096184") +
+  labs(
+    title = "Boxplot of SalePrice by OverallQualBinary",
+    x = "OverallQualBinary",
+    y = "SalePrice"
+  ) +
+  theme_minimal()
+```
+
+
+```{R } 
+# Pair Plot
+pairs(dataframe[, c("SalePrice", "LotArea", "OverallQual", "years_old", "TotRmsAbvGrd")])
+ggtitle("Pair Plot of Selected Variables") 
+```
+
+```{R } 
+# Density Plot for Residuals
+residuals <- predection_logist - dataframe_test$SalePrice
+ggplot() +
+  geom_density(aes(x = residuals), fill = "purple", alpha = 0.7) +
+  labs(
+    title = "Density Plot of Residuals",
+    x = "Residuals",
+    y = "Density"
+  ) +
+  theme_minimal()
+```
