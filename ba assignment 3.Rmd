@@ -1,0 +1,165 @@
+---
+title: "BA Assignment 3"
+author: "VINAY KACHARAM"
+date: "2023-11-05"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+---
+
+
+
+
+# (1)creating two variables X and Y:
+```{r}
+set.seed(2017)
+X=runif(100)*10
+Y=X*4+3.45
+Y=rnorm(100)*0.29*Y+Y
+```
+
+## a)Plot Y against X. Include a screenshot of the plot in your submission. Using the File menu you can save the graph as a picture on your computer. Based on the plot do you think we can fit a linear model to explain Y based on X?
+```{r}
+plot(X,Y,main="Scatterplot")
+```
+
+## The scatterplot suggests that the presented values, where Y increases steadily with X changing, match the linear model. It show a positive relationship.
+
+## b)Construct a simple linear model of Y based on X. Write the equation that explains Y based on X. What is the accuracy of this model?
+
+```{r}
+plot(X,Y,xlim = c(0,10), xlab = "X axis",ylab = "Y axis", main = "Linear Model Graph", col = "orange", pch=17) 
+abline(lsfit(X,Y),col = "blue")
+```
+```{r}
+model <- lm(X~Y)
+summary(model)
+```
+## The linear model Y = 4.4655 + 3.6108X accurately explains the relationship between Y and X. The model is statistically significant, with a high R-squared value (0.6517), indicating a strong fit and substantial explanatory power.The model has good accuracy, with a high R-squared value of 0.6517, indicating it explains about 65.17% of the variance in Y. The coefficients are significant, and the low p-values support the model's validity.
+
+## c)How the Coefficient of Determination, R 2, of the model above is related to the correlation coefficient of X and Y?
+
+```{r}
+R2 <- cor(X,Y)^2
+R2
+```
+## The coefficient of determination (R-squared) of 0.6517 indicates that approximately 65.17% of the variance in Y is explained by the linear relationship with X. This value is directly related to the square of the correlation coefficient (r) between X and Y.
+
+# (2)We will use the ‘mtcars’ dataset for this question. The dataset is already included in your R distribution. The dataset shows some of the characteristics of different cars. The following shows few samples (i.e. the first 6 rows) of the dataset. 
+
+```{r}
+head(mtcars)
+```
+
+## a)James wants to buy a car. He and his friend, Chris, have different opinions about the Horse Power (hp) of cars. James think the weight of a car (wt) can be used to estimate the Horse Power of the car while Chris thinks the fuel consumption expressed in Mile Per Gallon (mpg), is a better estimator of the (hp). Who do you think is right? 
+
+## James opinion:
+```{r}
+James_opi <- lm(hp~wt,data=mtcars)
+summary(James_opi)
+```
+## Chris opinion:
+```{r}
+Chris_opi <- lm(hp~mpg,data=mtcars)
+summary(Chris_opi)
+```
+## Both James's opinion, using car weight (wt), and Chris's opinion, using fuel consumption (mpg), are supported by linear models. Chris's opinion slightly outperforms James's opinion, with a higher R-squared value (0.6024 vs. 0.4339), suggesting that mpg is a better estimator for car Horse Power (hp) in this dataset.
+
+
+
+## b)Build a model that uses the number of cylinders (cyl) and the mile per gallon (mpg) values of a car to predict the car Horse Power (hp). Using this model, what is the estimated Horse Power of a car with 4 calendar and mpg of 22?
+
+```{r}
+Horse_power <- lm(hp~mpg+cyl,data=mtcars)
+summary(Horse_power)
+```
+## Prediction:
+```{r}
+predict(Horse_power,data.frame(cyl=4,mpg=22))
+```
+## Horse Power=88.9361
+
+## Coefficient:
+
+```{r}
+Horse_power$coefficients
+```
+```{r}
+Predict_horse_pow <- (Horse_power$coefficients[2]*22)+(Horse_power$coefficients[3]*4)
+Predict_horse_pow
+```
+
+# (3)For this question, we are going to use BostonHousing dataset:
+
+## installing the package and library(mlbench):
+```{r}
+library(mlbench)
+```
+## Loading the dataset:
+```{r}
+data("BostonHousing")
+head(BostonHousing)
+```
+## a)Build a model to estimate the median value of owner-occupied homes (medv)based on the following variables: crime crate (crim), proportion of residential land zoned for lots over 25,000 sq.ft (zn), the local pupil-teacher ratio (ptratio) and weather the whether the tract bounds Chas River(chas). Is this an accurate model? 
+
+```{r}
+Bost_Hous <- lm(medv~crim+zn+ptratio+chas,data=BostonHousing)
+summary(Bost_Hous)
+```
+## The linear model for estimating median home values based on crime rate, zoning, pupil-teacher ratio, and proximity to the Charles River is statistically significant, but the R-squared value (0.3599) indicates that these variables explain only a moderate portion of the variance in median home values. Further analysis and consideration of domain-specific knowledge are needed to assess the model's practical accuracy.
+
+## b)i)Imagine two houses that are identical in all aspects but one bounds the Chas River and the other does not. Which one is more expensive and by how much?
+```{r}
+Bost_House <- lm(formula = medv ~ chas, data = BostonHousing)
+```
+
+
+```{r}
+House_a <- Bost_House$coefficients[1] + Bost_House$coefficients[2]*0 
+House_b <- Bost_House$coefficients[1] + Bost_House$coefficients[2]*1
+Cost <- House_b - House_a
+Cost
+```
+## The house which bounds the Chas River is more expensive by 6.346157.
+
+## b)ii)Imagine two houses that are identical in all aspects but in the neighborhood of one of them the pupil-teacher ratio is 15 and in the other one is 18. Which one is more expensive and by how much? 
+```{r}
+Bost_Hous_nei <- lm(formula = medv ~ ptratio, data = BostonHousing)
+```
+
+```{r}
+House_1 <- Bost_Hous_nei$coefficients[1] + Bost_Hous_nei$coefficients[2] * 15 
+House_2 <- Bost_Hous_nei$coefficients[1] + Bost_Hous_nei$coefficients[2] * 18
+
+New_Cost <- House_1 - House_2
+New_Cost
+```
+## That neighborhood with the pupil-teacher ratio 15 is much more expensive when compared with pupil-teacher ratio 18 by 6.471526.
+
+
+## c)Which of the variables are statistically important (i.e. related to the house price)? Hint: use the p-values of the coefficients to answer. 
+
+```{r}
+summary(Bost_Hous)
+```
+## The p-value being less than 2.2e-16, which is far below the common significance level of 0.05 (or 5%), confirms that the variables in the model are highly statistically significant. This means that these variables have a substantial impact on explaining the variation in house prices.
+
+
+## d)Use the anova analysis and determine the order of importance of these four variables:
+```{r}
+Ord_impo <- anova(Bost_Hous)
+Ord_impo
+```
+## The order of importance of these four variables :
+1.crim
+2.zn
+3.ptratio
+4.chas
+
+
+
+
+
+

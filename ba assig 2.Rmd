@@ -1,0 +1,187 @@
+---
+title: "BA Assignment 2"
+author: "VINAY KACHARAM"
+date: "2023-10-16"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+
+#Loading the Dataset :
+
+```{r}
+setwd("C:/Users/vinay/OneDrive/Desktop/BA R PRO/")
+dataframe=read.csv("C:/Users/vinay/OneDrive/Desktop/BA R PRO/Online_Retail.csv")
+```
+## Loading the library(dplyr)
+```{r}
+library(dplyr)
+```
+
+## 1.Showing how many transactions are in the dataset for each country :
+
+```{r}
+Total_trans=nrow(dataframe)
+Total_trans
+```
+
+```{r}
+Tran_count <- dataframe %>% group_by(Country) %>% summarize(Count = n())
+Tran_count
+```
+This is the number of transactions for each country.
+
+#Now Calculate the percentage of the transactions for each country :
+```{r}
+country_count_Per <- Tran_count %>% mutate(Percentage = (Count / Total_trans) * 100)
+country_count_Per
+```
+This is the percentage of the transactions for each country
+
+#Now Show the countries with more the 1% of total transactions:
+```{r}
+country_counts_filter <- country_count_Per %>% filter(Percentage > 1)
+country_counts_filter 
+```
+
+## 2.Creating a new variable "TransactionValue" by multiplying "Quantity" and "UnitPrice":
+```{r}
+dataframe$TransactionValue <- dataframe$Quantity*dataframe$UnitPrice
+head(dataframe)
+```
+
+## 3.Showing the breakdown of transaction values by countries:
+```{r}
+country_totals <- dataframe %>% group_by(Country) %>% summarize(TotalValue = sum(TransactionValue))
+country_totals
+```
+
+#Display only countries with total transaction exceeding 130,000 British Pounds:
+```{r}
+filtered_countries <- country_totals %>% filter(TotalValue > 130000)
+filtered_countries
+```
+## 4.We are dealing with the InvoiceDate variable: printing the time, date, day of week, month, converting the datatypes of the following as mentioned in the assignment.
+
+```{r}
+Temp=strptime(dataframe$InvoiceDate,format='%m/%d/%Y %H:%M',tz='GMT')
+head(Temp)
+```
+```{r}
+dataframe$New_Invoice_Date <- as.Date(Temp)
+head(dataframe$New_Invoice_Date)
+```
+
+```{r}
+dataframe$New_Invoice_Date[20000]- dataframe$New_Invoice_Date[10]
+```
+
+```{r}
+dataframe$Invoice_Day_Week= weekdays(dataframe$New_Invoice_Date)
+head(dataframe$Invoice_Day_Week)
+```
+
+```{r}
+dataframe$NewInvoice_Hour = as.numeric(format(Temp, "%H"))
+head(dataframe$NewInvoice_Hour)
+```
+
+```{r}
+dataframe$New_Invoice_Month = as.numeric(format(Temp, "%m"))
+head(dataframe$New_Invoice_Month)
+```
+
+##(a)
+Show the percentage of transactions by days of the week
+
+```{r}
+weekday_count = dataframe %>% group_by(Invoice_Day_Week) %>%
+summarise(percent = 100* n()/nrow(dataframe))
+weekday_count
+```
+
+##(b)
+Show the percentage of transactions (by transaction volume) by days of the week 
+```{r}
+weekdays_sum = dataframe %>% group_by(Invoice_Day_Week) %>% summarise(sum=sum(TransactionValue))
+weekdays_sum_per = 100*(weekdays_sum$sum)/sum(weekdays_sum$sum)
+weekdays_sum$sum = weekdays_sum_per
+weekdays_sum
+```
+##(c)
+Show the percentage of transactions (by transaction volume) by month of the year 
+```{r}
+Invoice_per_month = dataframe %>% group_by(New_Invoice_Month) %>% summarise(sum=sum(TransactionValue))
+Month_per = 100*(Invoice_per_month$sum)/sum(Invoice_per_month$sum)
+Invoice_per_month$sum = Month_per
+Invoice_per_month
+```
+##(d)
+The highest number of transactions from Australia with date
+```{r}
+Australia_trans = dataframe %>% filter(Country == "Australia") %>% group_by(New_Invoice_Date) %>% summarise(total=n())
+Aus_Max_trans_dt = Australia_trans[which.max(Australia_trans$total),]
+Aus_Max_trans_dt
+```
+
+
+## 5.Plot the histogram of transaction values from Germany:
+```{r}
+Trans_germ=dataframe[dataframe$Country=="Germany",]
+Tranval_germ=Trans_germ$TransactionValue
+
+hist(Tranval_germ,main="Histogram of Transaction values from Germany",xlab="Transaction Value",ylab="Frequency",col="orange",border="black")
+```
+
+## 6.Find Which customer had the highest number of transactions :
+```{r}
+no_of_trans=table(dataframe$CustomerID)
+High_no_of_trans=names(which.max(no_of_trans))
+High_no_of_trans
+```
+
+#Find the most valuable customer i.e.,the customer with highest total sum of transactions:
+```{r}
+sum_trans_cust <- tapply(dataframe$TransactionValue, dataframe$CustomerID, sum)
+most_val_cust <- names(which.max(sum_trans_cust))
+print(most_val_cust)
+```
+
+## 7.Calculate the percentage of missing values for each variable in the dataset:
+```{r}
+NA_per = colMeans(is.na(dataframe))*100
+NA_per
+```
+
+## 8.The number of transactions with missing CustomerID records by countries :
+```{r}
+NA_Cust = dataframe[is.na(dataframe$CustomerID),]
+table(NA_Cust$Country)
+```
+
+## 9.the costumers comeback to the website for their next shopping
+
+```{r}
+Come_back <- table (dataframe$Invoice_Day_Week,dataframe$New_Invoice_Date)
+Come_back_New<- diff(Come_back)
+mean(Come_back_New)
+```
+## 10.Calculate The return rate for the French customers:
+```{r}
+Fren_cust = filter(dataframe,Country=="France" )
+Rate_return = nrow(filter(Fren_cust,Quantity<1))/nrow(Fren_cust)
+Rate_return
+```
+
+## 11.The product that has generated the highest revenue for the retailer:
+```{r}
+Highreve_product= dataframe %>% group_by(StockCode) %>% summarise(Sum_trnsval = sum(TransactionValue))
+Highreve_product[which.max(Highreve_product$Sum_trnsval),]
+```
+
+## 12. The unique customers are represented in the dataset:
+```{r}
+length(unique(dataframe$CustomerID))
+```
